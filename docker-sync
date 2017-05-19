@@ -26,7 +26,7 @@ def main():
 	local_images = get_local_images();
 	check(local_images)
 
-	new, need_update, current = partition_images(remote_images, local_images)
+	new, need_update, current = partition_images(local_images, remote_images)
 
 	print("\n--> Report:\n")
 	print("current:", current)
