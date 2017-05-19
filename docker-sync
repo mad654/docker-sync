@@ -69,18 +69,18 @@ def main():
 				if common_parent:
 					print("Found common parent: %s"%common_parent[:20])
 					print("Dumping local parent".ljust(just_size,"."), end="", flush=True)
-					_, output = execute("docker save -o %s %s"%(file_name, common_parent))
+					_, output = execute("sudo docker save -o %s %s"%(file_name, common_parent))
 					check(output)
 				else:
 					print("Unable to find a common parent. Importing full image.")
 			else:
 				print("\n--> Updating '%s':\n"%name_tag)
 				print("Dumping local image".ljust(just_size,"."), end="", flush=True)
-				_, output = execute("docker save -o %s %s"%(file_name, name_tag))
+				_, output = execute("sudo docker save -o %s %s"%(file_name, name_tag))
 				check(output)
 
 			print("Dumping remote image".ljust(just_size,"."), end="", flush=True)
-			_, output = execute(["ssh", args.remote, "-o", "ControlPath=%s"%socket_path, "docker", "save", "-o", file_name, name_tag])
+			_, output = execute(["ssh", args.remote, "-o", "ControlPath=%s"%socket_path, "sudo docker", "save", "-o", file_name, name_tag])
 			check(output)
 
 			print("Starting rsync connection.",end='\n\n')
@@ -92,7 +92,7 @@ def main():
 			check(output)
 
 			print("Loading new image".ljust(just_size,"."), end="", flush=True)
-			_, output = execute("docker load -i %s"%(file_name))
+			_, output = execute("sudo docker load -i %s"%(file_name))
 			check(output)
 
 			print("Removing local temporal file".ljust(just_size,"."), end="", flush=True)
@@ -136,13 +136,13 @@ def partition_images(remote, local):
 	return new, need_update, current
 
 def get_remote_images(remote, socket_path):
-	output, result = execute(["ssh", remote, "-o", "ControlPath=%s"%socket_path, "docker", "images", "--no-trunc"] )
+	output, result = execute(["ssh", remote, "-o", "ControlPath=%s"%socket_path, "sudo docker", "images", "--no-trunc"] )
 	if result!=0: return
 	output = [line.strip().split() for line in output if line.strip()!=""][1:]
 	return [("%s:%s"%(image[0], image[1]), image[2]) for image in output if image[0]!="<none>"]
 
 def get_local_images():
-	output, result = execute("docker images --no-trunc")
+	output, result = execute("sudo docker images --no-trunc")
 	if result!=0: return
 	output = [line.strip().split() for line in output if line.strip()!=""][1:]
 	return [("%s:%s"%(image[0], image[1]), image[2]) for image in output]
@@ -186,18 +186,18 @@ def execute(command, print_output = False):
 
 def get_image_parents(image, remote, socket_path):
 	command = """
-	parent=$(docker inspect %s | grep -Po \"(?<=\\\"Id\\\": \\\")[^\\\"]*\"  );
+	parent=$(sudo docker inspect %s | grep -Po \"(?<=\\\"Id\\\": \\\")[^\\\"]*\"  );
 	while test $(echo $parent|wc -m) -eq 65;
 	do
 		echo $parent;
-		parent=$(docker inspect ${parent} | grep -Po \"(?<=\\\"Parent\\\": \\\")[^\\\"]*\" );
+		parent=$(sudo docker inspect ${parent} | grep -Po \"(?<=\\\"Parent\\\": \\\")[^\\\"]*\" );
 	done;
 	"""%image
 	output, exit_val = execute(["ssh", remote, "-o", "ControlPath=%s"%socket_path, "bash", "-cl", "'"+command+"'"])
 	return [ID.strip() for ID in output] if exit_val==0 else None
 
 def get_all_images():
-	output, exit_val = execute("docker images -qa --no-trunc")
+	output, exit_val = execute("sudo docker images -qa --no-trunc")
 	return [ID.strip() for ID in output] if exit_val==0 else None
 
 def get_common_parent(remote_parents, local_images):
